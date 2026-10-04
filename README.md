@@ -1,16 +1,21 @@
 # CHATS
-A GitHub Pages + Supabase private messenger.
 
-## New mobile/media features
-- Mobile-first responsive UI and app-like layout
-- Installable PWA shell
-- Voice message recording and playback
-- Image/file attachments up to 25 MB
-- Browser notifications while the site is open/backgrounded
-- Unread messages remain stored in Supabase across logout/login
+Phone-first private messaging website using GitHub Pages + Supabase.
 
-## Supabase setup
-Run the updated `supabase-schema.sql` in SQL Editor. Then create a Storage bucket named `chat-files` and make it **Public**. Add storage policies that allow authenticated users to upload/read objects in that bucket. Keep your `anon/public` key in `js/config.js`; never use `service_role` in the browser.
+## Important upgrade step
+Run `supabase-schema.sql` in Supabase SQL Editor before using the new app. It adds `message_type`, file fields, profile picture, and last-active fields to an existing database.
 
-## Important about notifications
-This version can notify you when the website is open or running in a background browser tab. True push notifications after the browser/site is completely closed require a Web Push service/backend (VAPID or a provider such as OneSignal). That can be added as the next upgrade.
+## Keep your Supabase config
+Keep the `js/config.js` file from your currently working CHATS website. Do not replace it with a placeholder config.
+
+## Features
+- Mobile-first responsive UI
+- Dark, light, purple, blue and green themes
+- Profile name, picture and password settings
+- Online green dot / Active now
+- Last active time when offline
+- Seen status on sent messages
+- Text, image/file and voice messages
+- Supabase Realtime messaging
+- Browser notifications while supported by the browser
+- PWA manifest/service worker
