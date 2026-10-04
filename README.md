@@ -1,4 +1,4 @@
-# MoxoChat
+# CHATS
 A GitHub Pages + Supabase private messenger.
 
 ## New mobile/media features
