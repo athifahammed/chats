@@ -19,6 +19,3 @@ Keep the `js/config.js` file from your currently working CHATS website. Do not r
 - Supabase Realtime messaging
 - Browser notifications while supported by the browser
 - PWA manifest/service worker
-
-
-CHATS users-first version: voice notes and file sharing are intentionally disabled. Mobile opens directly to the user list. Screenshot detection is not supported by standard mobile browsers, so CHATS does not falsely claim to detect screenshots.
