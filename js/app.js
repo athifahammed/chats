@@ -1,108 +1,28 @@
 const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+let currentUser=null,profile=null,selectedUser=null,channel=null,authMode="login",mediaRecorder=null,recordChunks=[],recordTimer=null,recordStart=0;
+const $=id=>document.getElementById(id);const initials=(n="User")=>n.trim().slice(0,1).toUpperCase();
+function toast(msg){$("toast").textContent=msg;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),3200)}
+function escapeHtml(s){const d=document.createElement("div");d.textContent=s??"";return d.innerHTML}
+function fmtSize(n){if(!n)return"";const u=["B","KB","MB","GB"];let i=0,x=n;while(x>=1024&&i<3){x/=1024;i++}return`${x.toFixed(i?1:0)} ${u[i]}`}
 
-let currentUser = null, profile = null, selectedUser = null, channel = null;
-let authMode = "login";
-
-const $ = id => document.getElementById(id);
-function toast(msg){$("toast").textContent=msg;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),3000)}
-function initials(name="User"){return name.trim().slice(0,1).toUpperCase()}
-
-document.querySelectorAll("[data-auth]").forEach(b=>b.onclick=()=>{
-  authMode=b.dataset.auth;
-  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));
-  $("displayName").classList.toggle("hidden",authMode!=="signup");
-  $("authButton").textContent=authMode==="signup"?"Create account":"Login";
-});
-
-$("authForm").onsubmit=async e=>{
-  e.preventDefault();
-  const email=$("email").value.trim(), password=$("password").value;
-  if(authMode==="signup"){
-    const name=$("displayName").value.trim()||email.split("@")[0];
-    const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:name}}});
-    if(error)return toast(error.message);
-    if(data.session) await startApp(data.user); else toast("Account created. Check your email to confirm, then login.");
-  }else{
-    const {data,error}=await sb.auth.signInWithPassword({email,password});
-    if(error)return toast(error.message);
-    await startApp(data.user);
-  }
-};
-
-$("logoutBtn").onclick=async()=>{await sb.auth.signOut();location.reload()};
-
-async function startApp(user){
-  currentUser=user;
-  $("authView").classList.add("hidden"); $("appView").classList.remove("hidden");
-  await ensureProfile(); await loadUsers();
-}
-
-async function ensureProfile(){
-  let {data,error}=await sb.from("profiles").select("*").eq("id",currentUser.id).maybeSingle();
-  if(error){toast(error.message);return}
-  if(!data){
-    const displayName=currentUser.user_metadata?.display_name||currentUser.email.split("@")[0];
-    const result=await sb.from("profiles").insert({id:currentUser.id,display_name:displayName}).select().single();
-    if(result.error){toast(result.error.message);return} data=result.data;
-  }
-  profile=data;
-  $("myName").textContent=data.display_name;
-  $("myEmail").textContent=currentUser.email;
-  $("myAvatar").textContent=initials(data.display_name);
-}
-
-async function loadUsers(){
-  const {data,error}=await sb.from("profiles").select("id,display_name,created_at").neq("id",currentUser.id).order("display_name");
-  if(error){toast(error.message);return}
-  renderUsers(data||[]);
-  $("userSearch").oninput=e=>renderUsers((data||[]).filter(u=>u.display_name.toLowerCase().includes(e.target.value.toLowerCase())));
-}
-
-function renderUsers(users){
-  const list=$("userList"); list.innerHTML="";
-  if(!users.length){list.innerHTML='<div class="no-users">No other users yet.</div>';return}
-  users.forEach(u=>{
-    const el=document.createElement("div");el.className="user-item"+(selectedUser?.id===u.id?" active":"");
-    el.innerHTML=`<div class="avatar">${initials(u.display_name)}</div><div class="user-info"><strong>${escapeHtml(u.display_name)}</strong><span>Start a private chat</span></div>`;
-    el.onclick=()=>openChat(u);list.appendChild(el);
-  });
-}
-
-async function openChat(user){
-  selectedUser=user;$("emptyChat").classList.add("hidden");$("chatPanel").classList.remove("hidden");
-  $("chatName").textContent=user.display_name;$("chatAvatar").textContent=initials(user.display_name);
-  if(channel)await sb.removeChannel(channel);
-  await loadMessages();
-  channel=sb.channel("messages:"+[currentUser.id,user.id].sort().join(":"))
-    .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},payload=>{
-      const m=payload.new;
-      if((m.sender_id===currentUser.id&&m.receiver_id===user.id)||(m.sender_id===user.id&&m.receiver_id===currentUser.id)) appendMessage(m);
-    }).subscribe();
-  await markRead();
-}
-async function loadMessages(){
-  const ids=[currentUser.id,selectedUser.id];
-  const {data,error}=await sb.from("messages").select("*")
-    .or(`and(sender_id.eq.${ids[0]},receiver_id.eq.${ids[1]}),and(sender_id.eq.${ids[1]},receiver_id.eq.${ids[0]})`)
-    .order("created_at",{ascending:true});
-  if(error){toast(error.message);return}
-  $("messages").innerHTML="";(data||[]).forEach(appendMessage);scrollMessages();
-}
-function appendMessage(m){
-  if(document.querySelector(`[data-msg="${m.id}"]`))return;
-  const el=document.createElement("div");el.className="message "+(m.sender_id===currentUser.id?"mine":"theirs");el.dataset.msg=m.id;
-  const t=new Date(m.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-  el.innerHTML=`${escapeHtml(m.content)}<span class="time">${t}</span>`;$("messages").appendChild(el);scrollMessages();
-}
-$("messageForm").onsubmit=async e=>{
-  e.preventDefault();const content=$("messageInput").value.trim();if(!content||!selectedUser)return;
-  $("messageInput").value="";
-  const {error}=await sb.from("messages").insert({sender_id:currentUser.id,receiver_id:selectedUser.id,content});
-  if(error){toast(error.message);$("messageInput").value=content}
-};
-async function markRead(){ if(!selectedUser)return; await sb.from("messages").update({read_at:new Date().toISOString()}).eq("sender_id",selectedUser.id).eq("receiver_id",currentUser.id).is("read_at",null)}
-function scrollMessages(){requestAnimationFrame(()=>$("messages").scrollTop=$("messages").scrollHeight)}
-function escapeHtml(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
-
-sb.auth.getSession().then(async({data})=>{if(data.session)await startApp(data.session.user)});
-sb.auth.onAuthStateChange(async(event,session)=>{if(event==="SIGNED_OUT")location.reload()});
+document.querySelectorAll("[data-auth]").forEach(b=>b.onclick=()=>{authMode=b.dataset.auth;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));$("displayName").classList.toggle("hidden",authMode!=="signup");$("authButton").textContent=authMode==="signup"?"Create account":"Login"});
+$("authForm").onsubmit=async e=>{e.preventDefault();const email=$("email").value.trim(),password=$("password").value;if(authMode==="signup"){const name=$("displayName").value.trim()||email.split("@")[0];const {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:name}}});if(error)return toast(error.message);if(data.session)await startApp(data.user);else toast("Account created. Check your email, then login.")}else{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)return toast(error.message);await startApp(data.user)}};
+$("logoutBtn").onclick=async()=>{await sb.auth.signOut();location.reload()};$("backBtn").onclick=()=>{selectedUser=null;$("chatPanel").classList.add("hidden");$("emptyChat").classList.remove("hidden")};
+async function startApp(user){currentUser=user;$("authView").classList.add("hidden");$("appView").classList.remove("hidden");await ensureProfile();await loadUsers();requestNotifications();registerSW();}
+async function ensureProfile(){let {data,error}=await sb.from("profiles").select("*").eq("id",currentUser.id).maybeSingle();if(error)return toast(error.message);if(!data){const displayName=currentUser.user_metadata?.display_name||currentUser.email.split("@")[0];const r=await sb.from("profiles").insert({id:currentUser.id,display_name:displayName}).select().single();if(r.error)return toast(r.error.message);data=r.data}profile=data;$("myName").textContent=data.display_name;$("myEmail").textContent=currentUser.email;$("myAvatar").textContent=initials(data.display_name)}
+async function loadUsers(){const {data,error}=await sb.from("profiles").select("id,display_name,created_at").neq("id",currentUser.id).order("display_name");if(error)return toast(error.message);const users=data||[];renderUsers(users);$("userSearch").oninput=e=>renderUsers(users.filter(u=>u.display_name.toLowerCase().includes(e.target.value.toLowerCase())))}
+function renderUsers(users){const list=$("userList");list.innerHTML="";if(!users.length){list.innerHTML='<div class="no-users">No other users yet.</div>';return}users.forEach(u=>{const el=document.createElement("div");el.className="user-item"+(selectedUser?.id===u.id?" active":"");el.innerHTML=`<div class="avatar">${escapeHtml(initials(u.display_name))}</div><div class="user-info"><strong>${escapeHtml(u.display_name)}</strong><span>Private chat</span></div>`;el.onclick=()=>openChat(u);list.appendChild(el)})}
+async function openChat(user){selectedUser=user;$("emptyChat").classList.add("hidden");$("chatPanel").classList.remove("hidden");$("chatName").textContent=user.display_name;$("chatAvatar").textContent=initials(user.display_name);if(channel)await sb.removeChannel(channel);await loadMessages();channel=sb.channel("messages:"+[currentUser.id,user.id].sort().join(":")).on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},payload=>{const m=payload.new;if((m.sender_id===currentUser.id&&m.receiver_id===user.id)||(m.sender_id===user.id&&m.receiver_id===currentUser.id)){appendMessage(m);if(m.sender_id!==currentUser.id){markRead();notifyIncoming(m)}}}).subscribe();await markRead()}
+async function loadMessages(){const ids=[currentUser.id,selectedUser.id];const {data,error}=await sb.from("messages").select("*").or(`and(sender_id.eq.${ids[0]},receiver_id.eq.${ids[1]}),and(sender_id.eq.${ids[1]},receiver_id.eq.${ids[0]})`).order("created_at",{ascending:true});if(error)return toast(error.message);$("messages").innerHTML="";(data||[]).forEach(appendMessage);scrollMessages()}
+function appendMessage(m){if(document.querySelector(`[data-msg="${m.id}"]`))return;const el=document.createElement("div");el.className="message "+(m.sender_id===currentUser.id?"mine":"theirs");el.dataset.msg=m.id;const t=new Date(m.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});let body="";if(m.message_type==="file"&&m.file_url){if((m.file_type||"").startsWith("image/"))body=`<a class="attachment" href="${encodeURI(m.file_url)}" target="_blank" rel="noopener"><img src="${encodeURI(m.file_url)}" alt="Image"></a>`;else body=`<a class="attachment" href="${encodeURI(m.file_url)}" target="_blank" rel="noopener"><div class="file-card"><div class="file-name">📎 ${escapeHtml(m.file_name||"File")}</div><div class="file-meta">${escapeHtml(fmtSize(m.file_size))}</div></div></a>`}else if(m.message_type==="voice"&&m.file_url){body=`<audio controls preload="metadata" src="${encodeURI(m.file_url)}"></audio>`}else body=escapeHtml(m.content);el.innerHTML=`${body}<span class="time">${t}</span>`;$("messages").appendChild(el);scrollMessages()}
+$("messageForm").onsubmit=async e=>{e.preventDefault();const content=$("messageInput").value.trim();if(!content||!selectedUser)return;$("messageInput").value="";const {error}=await sb.from("messages").insert({sender_id:currentUser.id,receiver_id:selectedUser.id,content,message_type:"text"});if(error){toast(error.message);$("messageInput").value=content}};
+$("attachBtn").onclick=()=>$("fileInput").click();$("fileInput").onchange=async e=>{const f=e.target.files?.[0];if(!f||!selectedUser)return;await sendFile(f,"file");e.target.value=""};
+async function sendFile(file,type){if(file.size>25*1024*1024)return toast("File is too large. Maximum 25 MB.");toast("Uploading…");const safe=`${currentUser.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;const {error:up}=await sb.storage.from("chat-files").upload(safe,file,{contentType:file.type||"application/octet-stream",upsert:false});if(up)return toast("Upload failed: "+up.message);const {data}=sb.storage.from("chat-files").getPublicUrl(safe);const {error}=await sb.from("messages").insert({sender_id:currentUser.id,receiver_id:selectedUser.id,content:file.name,message_type:type,file_url:data.publicUrl,file_name:file.name,file_type:file.type,file_size:file.size});if(error)toast(error.message);else toast("Sent")}
+$("voiceBtn").onclick=startRecording;$("cancelRecording").onclick=cancelRecording;$("stopRecording").onclick=stopRecording;
+async function startRecording(){if(!selectedUser)return;if(!navigator.mediaDevices?.getUserMedia)return toast("Voice recording is not supported here.");try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(stream);recordChunks=[];mediaRecorder.ondataavailable=e=>{if(e.data.size)recordChunks.push(e.data)};mediaRecorder.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());if(!recordChunks.length)return;const blob=new Blob(recordChunks,{type:mediaRecorder.mimeType||"audio/webm"});const file=new File([blob],`voice-${Date.now()}.webm`,{type:blob.type});await sendFile(file,"voice")};mediaRecorder.start();recordStart=Date.now();$("recordingBar").classList.remove("hidden");updateRecordTimer();recordTimer=setInterval(updateRecordTimer,500)}catch(err){toast("Microphone permission was denied.")}}
+function updateRecordTimer(){const s=Math.floor((Date.now()-recordStart)/1000);$("recordingTime").textContent=`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`}
+function stopRecording(){if(!mediaRecorder)return;clearInterval(recordTimer);$("recordingBar").classList.add("hidden");mediaRecorder.stop();mediaRecorder=null}function cancelRecording(){if(!mediaRecorder)return;clearInterval(recordTimer);mediaRecorder.onstop=null;mediaRecorder.stream?.getTracks().forEach(t=>t.stop());mediaRecorder.stop();mediaRecorder=null;$("recordingBar").classList.add("hidden")}
+async function markRead(){if(!selectedUser)return;await sb.from("messages").update({read_at:new Date().toISOString()}).eq("sender_id",selectedUser.id).eq("receiver_id",currentUser.id).is("read_at",null)}function scrollMessages(){requestAnimationFrame(()=>$('messages').scrollTop=$('messages').scrollHeight)}
+function requestNotifications(){if("Notification" in window&&Notification.permission==="default")Notification.requestPermission().catch(()=>{})}function notifyIncoming(m){if(document.visibilityState==="visible"&&selectedUser?.id===m.sender_id)return;if("Notification" in window&&Notification.permission==="granted")new Notification(selectedUser?.display_name||"New message",{body:m.message_type==="voice"?"🎙 Voice message":m.message_type==="file"?`📎 ${m.file_name||"File"}`:m.content,icon:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%237c5cff'/%3E%3Ctext x='50' y='67' font-size='58' text-anchor='middle' fill='white'%3EM%3C/text%3E%3C/svg%3E"})}
+async function registerSW(){if("serviceWorker" in navigator)try{await navigator.serviceWorker.register("sw.js")}catch(e){}}
+sb.auth.getSession().then(async({data})=>{if(data.session)await startApp(data.session.user)});sb.auth.onAuthStateChange(async(event,session)=>{if(event==="SIGNED_OUT")location.reload()});

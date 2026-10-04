@@ -1,57 +1,16 @@
 # MoxoChat
+A GitHub Pages + Supabase private messenger.
 
-A personal real-time messaging website using GitHub Pages + Supabase.
+## New mobile/media features
+- Mobile-first responsive UI and app-like layout
+- Installable PWA shell
+- Voice message recording and playback
+- Image/file attachments up to 25 MB
+- Browser notifications while the site is open/backgrounded
+- Unread messages remain stored in Supabase across logout/login
 
-## Features
-- Email/password accounts
-- User profiles
-- Private 1-to-1 messages
-- Real-time incoming messages
-- Read timestamps
-- Responsive mobile/desktop interface
+## Supabase setup
+Run the updated `supabase-schema.sql` in SQL Editor. Then create a Storage bucket named `chat-files` and make it **Public**. Add storage policies that allow authenticated users to upload/read objects in that bucket. Keep your `anon/public` key in `js/config.js`; never use `service_role` in the browser.
 
-## Setup
-
-### 1. Create Supabase project
-Create a project at https://supabase.com.
-
-Open **SQL Editor**, paste `supabase-schema.sql`, and run it.
-
-Then open **Project Settings → API** and copy:
-- Project URL
-- anon/public key
-
-Put them into `js/config.js`.
-
-### 2. Authentication
-In Supabase, open **Authentication → Providers → Email** and enable Email.
-
-For easy testing, you can disable email confirmation in the Auth settings. For a real public deployment, keep email confirmation enabled.
-
-### 3. GitHub
-Create a new GitHub repository and upload:
-- index.html
-- css/
-- js/
-- supabase-schema.sql
-- README.md
-
-Then open **Settings → Pages**:
-- Source: Deploy from a branch
-- Branch: main
-- Folder: / (root)
-
-GitHub will give you a `github.io` website URL.
-
-## Important security note
-The browser uses the Supabase `anon` key. This is normal. Never put the Supabase `service_role` key in the website.
-
-## Next upgrades
-- Profile photos
-- Typing indicator
-- Online presence
-- Image/file messages
-- Message deletion
-- Block users
-- Group chats
-- Push notifications
+## Important about notifications
+This version can notify you when the website is open or running in a background browser tab. True push notifications after the browser/site is completely closed require a Web Push service/backend (VAPID or a provider such as OneSignal). That can be added as the next upgrade.
