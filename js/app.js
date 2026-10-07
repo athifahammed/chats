@@ -2392,8 +2392,8 @@ function subscribeToRealtime() {
 
 
   /*
-    MESSAGE REALTIME
-  */
+   * MESSAGE REALTIME
+   */
 
   const messageChannel =
     db.channel(
@@ -2432,6 +2432,7 @@ function subscribeToRealtime() {
           );
         }
 
+
         if (
           status ===
           "CHANNEL_ERROR"
@@ -2449,8 +2450,8 @@ function subscribeToRealtime() {
 
 
   /*
-    PROFILE REALTIME
-  */
+   * PROFILE REALTIME
+   */
 
   const profileChannel =
     db.channel(
@@ -2466,7 +2467,70 @@ function subscribeToRealtime() {
         schema: "public",
         table: "profiles"
       },
-      async () => {
+      async (payload) => {
+
+        /*
+         * Check whether another user
+         * actually logged out.
+         */
+
+        if (
+          payload.eventType ===
+          "UPDATE"
+        ) {
+
+          const oldProfile =
+            payload.old;
+
+          const newProfile =
+            payload.new;
+
+
+          /*
+           * Only show the logout alert
+           * for the person currently
+           * open in the chat.
+           */
+
+          if (
+            state.selectedUser &&
+            newProfile &&
+            newProfile.id ===
+              state.selectedUser.id
+          ) {
+
+            const oldLogout =
+              oldProfile?.last_logout_at ||
+              null;
+
+            const newLogout =
+              newProfile?.last_logout_at ||
+              null;
+
+
+            /*
+             * last_logout_at changed
+             * = real Logout button press.
+             */
+
+            if (
+              newLogout &&
+              newLogout !== oldLogout
+            ) {
+
+              showLogoutChatAlert(
+                newProfile.display_name ||
+                "User"
+              );
+            }
+          }
+        }
+
+
+        /*
+         * Refresh users and current
+         * chat user information.
+         */
 
         await loadUsers();
 
