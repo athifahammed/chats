@@ -1,7 +1,3 @@
-<div class="empty-chat-icon">
-  🔒
-</div>
-
 <h3>
   This is our private space
 </h3>
