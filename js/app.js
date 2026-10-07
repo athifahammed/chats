@@ -1357,30 +1357,27 @@ function renderMessages() {
 
   messagesContainer.innerHTML = "";
 
-
   if (
     state.messages.length === 0
   ) {
 
     const empty =
-      document.createElement(
-        "div"
-      );
+      document.createElement("div");
 
     empty.className =
       "empty-chat";
 
     empty.innerHTML = `
       <div class="empty-chat-icon">
-        💬
+        🔒
       </div>
 
       <h3>
-        Start chatting
+        This is our private space
       </h3>
 
       <p>
-        Send a message, photo or video.
+        Just you and me. Keep it private.
       </p>
     `;
 
@@ -1401,9 +1398,7 @@ function renderMessages() {
 
 
       const wrapper =
-        document.createElement(
-          "div"
-        );
+        document.createElement("div");
 
       wrapper.className =
         `message ${
@@ -1447,22 +1442,18 @@ function renderMessages() {
 
 
       /*
-       * MESSAGE TIME
+       * MESSAGE META
        */
 
       const meta =
-        document.createElement(
-          "div"
-        );
+        document.createElement("div");
 
       meta.className =
         "message-meta";
 
 
       const time =
-        document.createElement(
-          "span"
-        );
+        document.createElement("span");
 
       time.className =
         "message-time";
@@ -1473,24 +1464,17 @@ function renderMessages() {
         );
 
 
-      meta.appendChild(
-        time
-      );
+      meta.appendChild(time);
 
 
       /*
-       * SEEN / SENT STATUS
-       *
-       * Only show this on messages
-       * sent by the current user.
+       * SENT / SEEN
        */
 
       if (mine) {
 
         const status =
-          document.createElement(
-            "span"
-          );
+          document.createElement("span");
 
         status.className =
           "message-status";
@@ -1499,21 +1483,15 @@ function renderMessages() {
         if (message.read_at) {
 
           status.textContent =
-            "✓✓";
+            "Seen";
 
           status.classList.add(
             "seen"
           );
 
-          status.title =
-            "Seen";
-
         } else {
 
           status.textContent =
-            "✓";
-
-          status.title =
             "Sent";
         }
 
@@ -1534,6 +1512,12 @@ function renderMessages() {
       );
     }
   );
+
+
+  requestAnimationFrame(
+    scrollMessagesToBottom
+  );
+}
 
 
   requestAnimationFrame(
