@@ -1,21 +1,9 @@
-# CHATS
+# CHATS — Simple
 
-Phone-first private messaging website using GitHub Pages + Supabase.
+Simple Supabase private chat app. No voice notes. No file uploads.
 
-## Important upgrade step
-Run `supabase-schema.sql` in Supabase SQL Editor before using the new app. It adds `message_type`, file fields, profile picture, and last-active fields to an existing database.
+1. Put your existing Supabase URL and anon key in `js/config.js`.
+2. If needed, run `supabase-migration.sql` in Supabase SQL Editor.
+3. Upload the files to GitHub Pages.
 
-## Keep your Supabase config
-Keep the `js/config.js` file from your currently working CHATS website. Do not replace it with a placeholder config.
-
-## Features
-- Mobile-first responsive UI
-- Dark, light, purple, blue and green themes
-- Profile name, picture and password settings
-- Online green dot / Active now
-- Last active time when offline
-- Seen status on sent messages
-- Text, image/file and voice messages
-- Supabase Realtime messaging
-- Browser notifications while supported by the browser
-- PWA manifest/service worker
+Uses the existing `profiles` and `messages` tables. Realtime must already be enabled for `messages`.
