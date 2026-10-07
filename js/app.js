@@ -1357,9 +1357,7 @@ function renderMessages() {
 
   messagesContainer.innerHTML = "";
 
-  if (
-    state.messages.length === 0
-  ) {
+  if (state.messages.length === 0) {
 
     const empty =
       document.createElement("div");
@@ -1381,143 +1379,106 @@ function renderMessages() {
       </p>
     `;
 
-    messagesContainer.appendChild(
-      empty
-    );
+    messagesContainer.appendChild(empty);
 
     return;
   }
 
+  state.messages.forEach((message) => {
 
-  state.messages.forEach(
-    (message) => {
+    const mine =
+      message.sender_id === state.user.id;
 
-      const mine =
-        message.sender_id ===
-        state.user.id;
+    const wrapper =
+      document.createElement("div");
 
-
-      const wrapper =
-        document.createElement("div");
-
-      wrapper.className =
-        `message ${
-          mine
-            ? "mine"
-            : "theirs"
-        }`;
+    wrapper.className =
+      `message ${mine ? "mine" : "theirs"}`;
 
 
-      /*
-       * MESSAGE CONTENT
-       */
+    /* MESSAGE CONTENT */
 
-      if (
-        message.message_type ===
-        "image"
-      ) {
+    if (message.message_type === "image") {
 
-        renderImageMessage(
-          wrapper,
-          message
-        );
+      renderImageMessage(
+        wrapper,
+        message
+      );
 
-      } else if (
-        message.message_type ===
-        "video"
-      ) {
+    } else if (message.message_type === "video") {
 
-        renderVideoMessage(
-          wrapper,
-          message
+      renderVideoMessage(
+        wrapper,
+        message
+      );
+
+    } else {
+
+      renderTextMessage(
+        wrapper,
+        message
+      );
+    }
+
+
+    /* MESSAGE META */
+
+    const meta =
+      document.createElement("div");
+
+    meta.className =
+      "message-meta";
+
+
+    /* TIME */
+
+    const time =
+      document.createElement("span");
+
+    time.className =
+      "message-time";
+
+    time.textContent =
+      formatMessageTime(
+        message.created_at
+      );
+
+    meta.appendChild(time);
+
+
+    /* SENT / SEEN */
+
+    if (mine) {
+
+      const status =
+        document.createElement("span");
+
+      status.className =
+        "message-status";
+
+      if (message.read_at) {
+
+        status.textContent =
+          "Seen";
+
+        status.classList.add(
+          "seen"
         );
 
       } else {
 
-        renderTextMessage(
-          wrapper,
-          message
-        );
+        status.textContent =
+          "Sent";
       }
 
-
-      /*
-       * MESSAGE META
-       */
-
-      const meta =
-        document.createElement("div");
-
-      meta.className =
-        "message-meta";
-
-
-      const time =
-        document.createElement("span");
-
-      time.className =
-        "message-time";
-
-      time.textContent =
-        formatMessageTime(
-          message.created_at
-        );
-
-
-      meta.appendChild(time);
-
-
-      /*
-       * SENT / SEEN
-       */
-
-      if (mine) {
-
-        const status =
-          document.createElement("span");
-
-        status.className =
-          "message-status";
-
-
-        if (message.read_at) {
-
-          status.textContent =
-            "Seen";
-
-          status.classList.add(
-            "seen"
-          );
-
-        } else {
-
-          status.textContent =
-            "Sent";
-        }
-
-
-        meta.appendChild(
-          status
-        );
-      }
-
-
-      wrapper.appendChild(
-        meta
-      );
-
-
-      messagesContainer.appendChild(
-        wrapper
-      );
+      meta.appendChild(status);
     }
-  );
 
 
-  requestAnimationFrame(
-    scrollMessagesToBottom
-  );
-}
+    wrapper.appendChild(meta);
+
+    messagesContainer.appendChild(wrapper);
+  });
 
 
   requestAnimationFrame(
