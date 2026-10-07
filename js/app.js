@@ -1413,6 +1413,10 @@ function renderMessages() {
         }`;
 
 
+      /*
+       * MESSAGE CONTENT
+       */
+
       if (
         message.message_type ===
         "image"
@@ -1442,6 +1446,19 @@ function renderMessages() {
       }
 
 
+      /*
+       * MESSAGE TIME
+       */
+
+      const meta =
+        document.createElement(
+          "div"
+        );
+
+      meta.className =
+        "message-meta";
+
+
       const time =
         document.createElement(
           "span"
@@ -1456,9 +1473,61 @@ function renderMessages() {
         );
 
 
-      wrapper.appendChild(
+      meta.appendChild(
         time
       );
+
+
+      /*
+       * SEEN / SENT STATUS
+       *
+       * Only show this on messages
+       * sent by the current user.
+       */
+
+      if (mine) {
+
+        const status =
+          document.createElement(
+            "span"
+          );
+
+        status.className =
+          "message-status";
+
+
+        if (message.read_at) {
+
+          status.textContent =
+            "✓✓";
+
+          status.classList.add(
+            "seen"
+          );
+
+          status.title =
+            "Seen";
+
+        } else {
+
+          status.textContent =
+            "✓";
+
+          status.title =
+            "Sent";
+        }
+
+
+        meta.appendChild(
+          status
+        );
+      }
+
+
+      wrapper.appendChild(
+        meta
+      );
+
 
       messagesContainer.appendChild(
         wrapper
