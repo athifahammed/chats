@@ -1311,18 +1311,55 @@ async function loadMessages() {
 
   try {
 
+    const myId =
+      state.user.id;
+
+    const otherId =
+      state.selectedUser.id;
+
+    // Get my personal clear time for this chat
     const {
-      data,
-      error
+      data: clearData,
+      error: clearError
     } = await db
+      .from("chat_clears")
+      .select("cleared_at")
+      .eq("user_id", myId)
+      .eq("other_user_id", otherId)
+      .maybeSingle();
+
+    if (clearError) {
+      throw clearError;
+    }
+
+    const clearedAt =
+      clearData?.cleared_at || null;
+
+    // Load conversation messages
+    let query = db
       .from("messages")
       .select("*")
       .or(
-        `and(sender_id.eq.${state.user.id},receiver_id.eq.${state.selectedUser.id}),and(sender_id.eq.${state.selectedUser.id},receiver_id.eq.${state.user.id})`
+        `and(sender_id.eq.${myId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${myId})`
       )
       .order("created_at", {
         ascending: true
       });
+
+    // If I cleared this chat,
+    // only show messages created after my clear time
+    if (clearedAt) {
+
+      query = query.gt(
+        "created_at",
+        clearedAt
+      );
+    }
+
+    const {
+      data,
+      error
+    } = await query;
 
     if (error) {
       throw error;
@@ -1335,7 +1372,10 @@ async function loadMessages() {
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "Load messages error:",
+      error
+    );
 
     messagesContainer.innerHTML =
       `<div class="empty-state">
@@ -1347,7 +1387,6 @@ async function loadMessages() {
     state.loadingMessages = false;
   }
 }
-
 
 /* =========================================================
    RENDER MESSAGES
@@ -3516,17 +3555,14 @@ async function clearCurrentChat() {
 
   closeChatMenu();
 
-
   const confirmed =
     confirm(
-      `Clear this chat for you?\n\nThe other person will still have their messages.`
+      `Clear this chat for you?\n\nThe other person will still see their messages.`
     );
-
 
   if (!confirmed) {
     return;
   }
-
 
   try {
 
@@ -3534,107 +3570,46 @@ async function clearCurrentChat() {
       "Clearing chat..."
     );
 
-
-    const myId =
-      state.user.id;
-
-    const otherId =
-      state.selectedUser.id;
-
-
-    /*
-     * Get all messages in this conversation
-     * that have not already been hidden
-     * for the current user.
-     */
-
     const {
-      data: messages,
-      error: fetchError
+      error
     } = await db
-      .from("messages")
-      .select("id, deleted_for")
-      .or(
-        `and(sender_id.eq.${myId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${myId})`
+      .from("chat_clears")
+      .upsert(
+        {
+          user_id:
+            state.user.id,
+
+          other_user_id:
+            state.selectedUser.id,
+
+          cleared_at:
+            new Date().toISOString()
+        },
+        {
+          onConflict:
+            "user_id,other_user_id"
+        }
       );
 
-
-    if (fetchError) {
-      throw fetchError;
+    if (error) {
+      throw error;
     }
 
-
-    /*
-     * Hide every message only for
-     * the current user.
-     */
-
-    for (
-      const message of messages || []
-    ) {
-
-      const deletedFor =
-        Array.isArray(
-          message.deleted_for
-        )
-          ? message.deleted_for
-          : [];
-
-
-      if (
-        !deletedFor.includes(myId)
-      ) {
-
-        deletedFor.push(myId);
-
-
-        const {
-          error
-        } = await db
-          .from("messages")
-          .update({
-            deleted_for:
-              deletedFor
-          })
-          .eq(
-            "id",
-            message.id
-          );
-
-
-        if (error) {
-          throw error;
-        }
-      }
-    }
-
-
-    /*
-     * Clear local chat immediately.
-     */
-
+    // Clear only my local screen
     state.messages = [];
 
     renderMessages();
 
-
-    /*
-     * Refresh user list.
-     */
-
     await loadUsers();
-
 
     showUploadStatus(
       "Chat cleared for you."
     );
 
-
     setTimeout(
       clearUploadStatus,
       1500
     );
-
 
   } catch (error) {
 
@@ -3643,14 +3618,12 @@ async function clearCurrentChat() {
       error
     );
 
-
     showUploadStatus(
       error.message ||
       "Could not clear chat."
     );
   }
 }
-
 
 /* =========================================================
    LOGOUT
