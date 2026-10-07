@@ -4239,3 +4239,75 @@ document.addEventListener(
     }
   }
 );
+
+
+
+
+
+function showLogoutChatAlert(
+  userName
+) {
+
+  if (
+    !messagesContainer
+  ) {
+    return;
+  }
+
+
+  const alert =
+    document.createElement(
+      "div"
+    );
+
+  alert.className =
+    "chat-system-alert";
+
+
+  alert.innerHTML = `
+    <span class="chat-system-alert-icon">
+      🔔
+    </span>
+
+    <span>
+      ${escapeHtml(userName)}
+      logged out
+    </span>
+  `;
+
+
+  messagesContainer.appendChild(
+    alert
+  );
+
+
+  requestAnimationFrame(
+    () => {
+
+      alert.classList.add(
+        "show"
+      );
+    }
+  );
+
+
+  messagesContainer.scrollTop =
+    messagesContainer.scrollHeight;
+}
+
+
+
+function escapeHtml(
+  value
+) {
+
+  const div =
+    document.createElement(
+      "div"
+    );
+
+  div.textContent =
+    value || "";
+
+  return div.innerHTML;
+}
