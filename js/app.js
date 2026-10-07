@@ -1317,7 +1317,7 @@ async function loadMessages() {
     const otherId =
       state.selectedUser.id;
 
-    // Get my personal clear time for this chat
+    // Get MY clear time
     const {
       data: clearData,
       error: clearError
@@ -1333,10 +1333,17 @@ async function loadMessages() {
     }
 
     const clearedAt =
-      clearData?.cleared_at || null;
+      clearData?.cleared_at
+        ? new Date(
+            clearData.cleared_at
+          ).getTime()
+        : 0;
 
-    // Load conversation messages
-    let query = db
+    // Get all messages between both users
+    const {
+      data,
+      error
+    } = await db
       .from("messages")
       .select("*")
       .or(
@@ -1346,27 +1353,27 @@ async function loadMessages() {
         ascending: true
       });
 
-    // If I cleared this chat,
-    // only show messages created after my clear time
-    if (clearedAt) {
-
-      query = query.gt(
-        "created_at",
-        clearedAt
-      );
-    }
-
-    const {
-      data,
-      error
-    } = await query;
-
     if (error) {
       throw error;
     }
 
+    // Hide only messages that existed before MY clear time
     state.messages =
-      data || [];
+      (data || []).filter(
+        (message) => {
+
+          if (!clearedAt) {
+            return true;
+          }
+
+          const messageTime =
+            new Date(
+              message.created_at
+            ).getTime();
+
+          return messageTime > clearedAt;
+        }
+      );
 
     renderMessages();
 
@@ -1387,7 +1394,6 @@ async function loadMessages() {
     state.loadingMessages = false;
   }
 }
-
 /* =========================================================
    RENDER MESSAGES
    ========================================================= */
