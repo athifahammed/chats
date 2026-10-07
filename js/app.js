@@ -2291,29 +2291,21 @@ function isUserOnline(
    USER STATUS TEXT
    ========================================================= */
 
-function getUserStatusText(
-  user
-) {
+function getUserStatusText(user) {
 
-  if (
-    isUserOnline(user)
-  ) {
-
-    return "Online";
+  if (!user) {
+    return "Offline";
   }
 
-
   /*
-    If the profile has a recent explicit
-    logout timestamp, we can identify
-    that the user actually used Logout.
-
-    Browser/device crashes cannot be
-    identified as an explicit logout.
-  */
+   * A real logout has priority.
+   * If the user logged out after their last activity,
+   * show "Logged out".
+   */
 
   if (
-    user.last_logout_at
+    user.last_logout_at &&
+    user.last_seen
   ) {
 
     const logoutTime =
@@ -2321,38 +2313,55 @@ function getUserStatusText(
         user.last_logout_at
       ).getTime();
 
-
-    const lastSeen =
-      user.last_seen
-        ? new Date(
-            user.last_seen
-          ).getTime()
-        : 0;
-
+    const lastSeenTime =
+      new Date(
+        user.last_seen
+      ).getTime();
 
     if (
-      logoutTime >= lastSeen
+      logoutTime >= lastSeenTime
     ) {
-
       return "Logged out";
     }
   }
 
 
-  if (user.last_seen) {
+  /*
+   * Online is valid only when:
+   * - is_online is true
+   * - last_seen is recent
+   */
 
-    return (
-      "Last seen " +
-      formatLastSeen(
+  if (
+    user.is_online === true &&
+    user.last_seen
+  ) {
+
+    const lastSeen =
+      new Date(
         user.last_seen
-      )
-    );
+      ).getTime();
+
+    const now =
+      Date.now();
+
+    const secondsSinceLastSeen =
+      (now - lastSeen) / 1000;
+
+    if (
+      secondsSinceLastSeen <= 70
+    ) {
+      return "Online";
+    }
   }
 
 
+  /*
+   * No recent heartbeat.
+   */
+
   return "Offline";
 }
-
 
 /* =========================================================
    FORMAT LAST SEEN
