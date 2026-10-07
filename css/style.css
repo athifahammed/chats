@@ -2241,13 +2241,12 @@ label:focus-visible {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 5px;
+  gap: 6px;
   margin-top: 4px;
 }
 
 .message-status {
-  font-size: 12px;
-  line-height: 1;
+  font-size: 11px;
   opacity: 0.65;
 }
 
