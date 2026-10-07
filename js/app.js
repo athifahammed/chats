@@ -3514,16 +3514,12 @@ async function clearCurrentChat() {
     return;
   }
 
-
   closeChatMenu();
 
 
   const confirmed =
     confirm(
-      `Clear the entire chat with ${
-        state.selectedUser.display_name ||
-        "this user"
-      }?\n\nThis will permanently remove all messages in this conversation.`
+      `Clear this chat for you?\n\nThe other person will still have their messages.`
     );
 
 
@@ -3547,76 +3543,90 @@ async function clearCurrentChat() {
 
 
     /*
-     * Delete messages SENT by me
-     * to the selected user.
+     * Get all messages in this conversation
+     * that have not already been hidden
+     * for the current user.
      */
 
     const {
-      error: sentError
+      data: messages,
+      error: fetchError
     } = await db
       .from("messages")
-      .delete()
-      .eq(
-        "sender_id",
-        myId
-      )
-      .eq(
-        "receiver_id",
-        otherId
+      .select("id, deleted_for")
+      .or(
+        `and(sender_id.eq.${myId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${myId})`
       );
 
 
-    if (sentError) {
-      throw sentError;
+    if (fetchError) {
+      throw fetchError;
     }
 
 
     /*
-     * Delete messages SENT by the
-     * selected user to me.
+     * Hide every message only for
+     * the current user.
      */
 
-    const {
-      error: receivedError
-    } = await db
-      .from("messages")
-      .delete()
-      .eq(
-        "sender_id",
-        otherId
-      )
-      .eq(
-        "receiver_id",
-        myId
-      );
+    for (
+      const message of messages || []
+    ) {
+
+      const deletedFor =
+        Array.isArray(
+          message.deleted_for
+        )
+          ? message.deleted_for
+          : [];
 
 
-    if (receivedError) {
-      throw receivedError;
+      if (
+        !deletedFor.includes(myId)
+      ) {
+
+        deletedFor.push(myId);
+
+
+        const {
+          error
+        } = await db
+          .from("messages")
+          .update({
+            deleted_for:
+              deletedFor
+          })
+          .eq(
+            "id",
+            message.id
+          );
+
+
+        if (error) {
+          throw error;
+        }
+      }
     }
 
 
     /*
-     * Clear local messages immediately.
+     * Clear local chat immediately.
      */
 
     state.messages = [];
-
 
     renderMessages();
 
 
     /*
-     * Refresh user list so the
-     * last message and unread count
-     * disappear.
+     * Refresh user list.
      */
 
     await loadUsers();
 
 
     showUploadStatus(
-      "Chat cleared."
+      "Chat cleared for you."
     );
 
 
