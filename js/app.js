@@ -443,21 +443,26 @@ async function handleLogin(event) {
 
   clearAuthMessage();
 
-  const email =
+  const loginValue =
     loginEmail.value.trim();
 
   const password =
     loginPassword.value;
 
-  if (!email || !password) {
+
+  if (
+    !loginValue ||
+    !password
+  ) {
 
     showAuthMessage(
-      "Enter your email and password.",
+      "Enter your email/name and password.",
       "error"
     );
 
     return;
   }
+
 
   setButtonLoading(
     loginButton,
@@ -465,7 +470,30 @@ async function handleLogin(event) {
     "Logging in..."
   );
 
+
   try {
+
+    /*
+     * SPECIAL PATHUU LOGIN
+     */
+
+    let email =
+      loginValue;
+
+    if (
+      loginValue.toLowerCase() ===
+      "pathuu"
+    ) {
+
+      email =
+        "pathuu@your-private-login.local";
+    }
+
+
+    /*
+     * NORMAL EMAIL LOGIN
+     * continues to work normally.
+     */
 
     const {
       data,
@@ -475,19 +503,26 @@ async function handleLogin(event) {
       password
     });
 
+
     if (error) {
       throw error;
     }
 
+
     if (!data.user) {
-      throw new Error("Login failed.");
+      throw new Error(
+        "Login failed."
+      );
     }
+
 
     await initializeApplication(
       data.user
     );
 
+
     loginForm.reset();
+
 
   } catch (error) {
 
@@ -497,6 +532,7 @@ async function handleLogin(event) {
       getFriendlyAuthError(error),
       "error"
     );
+
 
   } finally {
 
