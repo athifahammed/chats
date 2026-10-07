@@ -2297,56 +2297,55 @@ function getUserStatusText(user) {
     return "Offline";
   }
 
-  const now =
-    Date.now();
 
-  const lastSeen =
-    user.last_seen
-      ? new Date(
-          user.last_seen
-        ).getTime()
-      : 0;
-
-  const lastLogout =
-    user.last_logout_at
-      ? new Date(
-          user.last_logout_at
-        ).getTime()
-      : 0;
-
-  const secondsSinceLastSeen =
-    lastSeen
-      ? (now - lastSeen) / 1000
-      : Infinity;
-
-
-  // --------------------------------
-  // 1. Currently online
-  // --------------------------------
+  /*
+   * ONLINE
+   */
 
   if (
     user.is_online === true &&
-    secondsSinceLastSeen <= 70
+    user.last_seen
   ) {
-    return "Online";
+
+    const lastSeen =
+      new Date(
+        user.last_seen
+      ).getTime();
+
+    const seconds =
+      (
+        Date.now() -
+        lastSeen
+      ) / 1000;
+
+    if (
+      seconds <= 70
+    ) {
+
+      return "Online";
+    }
   }
 
 
-  // --------------------------------
-  // 2. Actually logged out
-  // --------------------------------
+  /*
+   * LOGGED OUT
+   *
+   * last_logout_at is only used
+   * after the user is confirmed offline.
+   */
 
   if (
-    lastLogout > 0 &&
-    lastLogout >= lastSeen
+    user.is_online === false &&
+    user.last_logout_at
   ) {
+
     return "Logged out";
   }
 
 
-  // --------------------------------
-  // 3. Offline / heartbeat expired
-  // --------------------------------
+  /*
+   * OFFLINE
+   */
 
   return "Offline";
 }
@@ -2434,14 +2433,15 @@ function subscribeToRealtime() {
 
 
   /*
+   * ================================
    * MESSAGE REALTIME
+   * ================================
    */
 
   const messageChannel =
     db.channel(
       "chats-messages"
     );
-
 
   messageChannel
     .on(
@@ -2474,7 +2474,6 @@ function subscribeToRealtime() {
           );
         }
 
-
         if (
           status ===
           "CHANNEL_ERROR"
@@ -2492,7 +2491,9 @@ function subscribeToRealtime() {
 
 
   /*
+   * ================================
    * PROFILE REALTIME
+   * ================================
    */
 
   const profileChannel =
@@ -2505,86 +2506,102 @@ function subscribeToRealtime() {
     .on(
       "postgres_changes",
       {
-        event: "*",
+        event: "UPDATE",
         schema: "public",
         table: "profiles"
       },
       async (payload) => {
 
+        const profile =
+          payload.new;
+
+        if (!profile) {
+          return;
+        }
+
+
         /*
-         * Check whether another user
-         * actually logged out.
+         * Ignore our own profile updates
          */
 
         if (
-          payload.eventType ===
-          "UPDATE"
+          state.user &&
+          profile.id ===
+            state.user.id
+        ) {
+          return;
+        }
+
+
+        /*
+         * Update the user inside
+         * the local state immediately.
+         */
+
+        const index =
+          state.users.findIndex(
+            (user) =>
+              user.id === profile.id
+          );
+
+
+        if (index !== -1) {
+
+          state.users[index] = {
+            ...state.users[index],
+            ...profile
+          };
+        }
+
+
+        /*
+         * Update selected user immediately.
+         */
+
+        if (
+          state.selectedUser &&
+          state.selectedUser.id ===
+            profile.id
         ) {
 
-          const oldProfile =
-            payload.old;
+          const oldLogout =
+            state.selectedUser.last_logout_at;
 
-          const newProfile =
-            payload.new;
+          const newLogout =
+            profile.last_logout_at;
+
+
+          state.selectedUser = {
+            ...state.selectedUser,
+            ...profile
+          };
 
 
           /*
-           * Only show the logout alert
-           * for the person currently
-           * open in the chat.
+           * REAL LOGOUT DETECTION
            */
 
           if (
-            state.selectedUser &&
-            newProfile &&
-            newProfile.id ===
-              state.selectedUser.id
+            newLogout &&
+            newLogout !== oldLogout
           ) {
 
-            const oldLogout =
-              oldProfile?.last_logout_at ||
-              null;
-
-            const newLogout =
-              newProfile?.last_logout_at ||
-              null;
-
-
-            /*
-             * last_logout_at changed
-             * = real Logout button press.
-             */
-
-            if (
-              newLogout &&
-              newLogout !== oldLogout
-            ) {
-
-              showLogoutChatAlert(
-                newProfile.display_name ||
-                "User"
-              );
-            }
+            showLogoutChatAlert(
+              profile.display_name ||
+              "User"
+            );
           }
+
+
+          updateChatHeader();
         }
 
 
         /*
-         * Refresh users and current
-         * chat user information.
+         * Refresh user list
          */
 
-        await loadUsers();
-
-
-        if (
-          state.selectedUser
-        ) {
-
-          await refreshSelectedUser();
-
-          updateChatHeader();
-        }
+        renderUsers();
       }
     )
     .subscribe();
@@ -3638,64 +3655,75 @@ async function logout() {
     return;
   }
 
-
   const confirmed =
     confirm(
       "Are you sure you want to log out?"
     );
 
-
   if (!confirmed) {
     return;
   }
 
-
-  logoutButton.disabled =
-    true;
-
+  logoutButton.disabled = true;
 
   try {
 
-    /*
-      Explicitly record logout.
+    const {
+      data: currentProfile,
+      error: profileError
+    } = await db
+      .from("profiles")
+      .select("logout_token")
+      .eq("id", state.user.id)
+      .single();
 
-      This lets other users know that
-      this was an actual Logout action.
-    */
+    if (profileError) {
+      throw profileError;
+    }
 
-    await db
+    const newToken =
+      (currentProfile.logout_token || 0) + 1;
+
+    const now =
+      new Date().toISOString();
+
+    const {
+      error
+    } = await db
       .from("profiles")
       .update({
         is_online: false,
-        last_seen:
-          new Date().toISOString(),
-        last_logout_at:
-          new Date().toISOString()
+        last_seen: now,
+        last_logout_at: now,
+        logout_token: newToken
       })
       .eq(
         "id",
         state.user.id
       );
 
+    if (error) {
+      throw error;
+    }
 
     stopHeartbeat();
 
     removeRealtimeChannels();
 
-
     const {
-      error
+      error: signOutError
     } = await db.auth.signOut();
 
-
-    if (error) {
-      throw error;
+    if (signOutError) {
+      throw signOutError;
     }
-
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "Logout error:",
+      error
+    );
 
     showSettingsMessage(
       error.message ||
@@ -3705,8 +3733,7 @@ async function logout() {
 
   } finally {
 
-    logoutButton.disabled =
-      false;
+    logoutButton.disabled = false;
   }
 }
 
