@@ -2072,7 +2072,8 @@ function updateChatHeader() {
    ========================================================= */
 
 async function setOwnOnlineStatus(
-  online
+  online,
+  explicitLogout = false
 ) {
 
   if (!state.user) {
@@ -2086,15 +2087,19 @@ async function setOwnOnlineStatus(
 
 
   const update = {
-    is_online:
-      enabled,
+    is_online: enabled,
 
     last_seen:
       new Date().toISOString()
   };
 
 
-  if (!enabled) {
+  /*
+   * ONLY an actual Logout button press
+   * should update last_logout_at.
+   */
+
+  if (explicitLogout) {
 
     update.last_logout_at =
       new Date().toISOString();
