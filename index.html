@@ -1,141 +1,786 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#111827">
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
+  >
+
+  <meta name="theme-color" content="#0b0f17">
+
+  <meta
+    name="description"
+    content="CHATS - Simple private messaging"
+  >
+
   <title>CHATS</title>
+
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
-  <div id="app">
-    <section id="authScreen" class="screen auth-screen">
-      <div class="auth-card">
-        <div class="brand">
-          <div class="brand-mark">C</div>
-          <div>
-            <h1>CHATS</h1>
-            <p>Simple private messaging</p>
-          </div>
+
+  <!-- =========================================================
+       AUTH SCREEN
+  ========================================================== -->
+
+  <section id="auth" class="screen">
+
+    <div class="card auth-card">
+
+      <!-- Brand -->
+      <div class="brand">
+
+        <div class="brand-logo">
+          C
         </div>
 
-        <div class="tabs">
-          <button class="tab active" data-auth-tab="login">Login</button>
-          <button class="tab" data-auth-tab="signup">Create account</button>
+        <div class="brand-text">
+          <h1>CHATS</h1>
+          <p>Simple private messaging</p>
         </div>
 
-        <form id="loginForm" class="auth-form">
-          <label>Email</label>
-          <input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
-          <label>Password</label>
-          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" required>
-          <button class="primary-btn" type="submit">Login</button>
-        </form>
-
-        <form id="signupForm" class="auth-form hidden">
-          <label>Your name</label>
-          <input id="signupName" type="text" maxlength="40" placeholder="Your name" required>
-          <label>Email</label>
-          <input id="signupEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
-          <label>Password</label>
-          <input id="signupPassword" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters" required>
-          <button class="primary-btn" type="submit">Create account</button>
-        </form>
-
-        <p id="authMessage" class="message"></p>
       </div>
-    </section>
 
-    <section id="chatScreen" class="screen chat-screen hidden">
-      <header class="topbar">
-        <div>
-          <div class="app-title">CHATS</div>
-          <div id="connectionStatus" class="connection">Connecting…</div>
+
+      <!-- Login / Signup Tabs -->
+      <div class="auth-tabs">
+
+        <button
+          type="button"
+          class="auth-tab active"
+          data-tab="login"
+        >
+          Login
+        </button>
+
+        <button
+          type="button"
+          class="auth-tab"
+          data-tab="signup"
+        >
+          Create account
+        </button>
+
+      </div>
+
+
+      <!-- =====================================================
+           LOGIN FORM
+      ====================================================== -->
+
+      <form id="login-form" class="auth-form">
+
+        <div class="form-group">
+
+          <label for="login-email">
+            Email
+          </label>
+
+          <input
+            id="login-email"
+            type="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+            required
+          >
+
         </div>
-        <button id="logoutBtn" class="icon-btn" title="Log out" aria-label="Log out">↪</button>
-      </header>
 
-      <main class="main-area">
-        <section id="usersPanel" class="panel users-panel">
-          <div class="panel-head">
-            <div>
-              <h2>Messages</h2>
-              <p id="myNameLabel">Loading…</p>
-            </div>
-            <button id="profileBtn" class="small-btn">Profile</button>
+
+        <div class="form-group">
+
+          <label for="login-password">
+            Password
+          </label>
+
+          <input
+            id="login-password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="••••••••"
+            required
+          >
+
+        </div>
+
+
+        <button
+          type="submit"
+          class="primary-button"
+          id="login-button"
+        >
+          Login
+        </button>
+
+      </form>
+
+
+      <!-- =====================================================
+           SIGNUP FORM
+      ====================================================== -->
+
+      <form
+        id="signup-form"
+        class="auth-form hidden"
+      >
+
+        <div class="form-group">
+
+          <label for="signup-name">
+            Name
+          </label>
+
+          <input
+            id="signup-name"
+            type="text"
+            maxlength="40"
+            autocomplete="name"
+            placeholder="Your name"
+            required
+          >
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label for="signup-email">
+            Email
+          </label>
+
+          <input
+            id="signup-email"
+            type="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+            required
+          >
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label for="signup-password">
+            Password
+          </label>
+
+          <input
+            id="signup-password"
+            type="password"
+            minlength="6"
+            autocomplete="new-password"
+            placeholder="Minimum 6 characters"
+            required
+          >
+
+        </div>
+
+
+        <button
+          type="submit"
+          class="primary-button"
+          id="signup-button"
+        >
+          Create account
+        </button>
+
+      </form>
+
+
+      <!-- Authentication Message -->
+
+      <div
+        id="auth-message"
+        class="message-area"
+        aria-live="polite"
+      ></div>
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================================================
+       MAIN APPLICATION
+  ========================================================== -->
+
+  <section
+    id="app"
+    class="app hidden"
+  >
+
+    <!-- =======================================================
+         TOP HEADER
+    ======================================================== -->
+
+    <header class="top-header">
+
+      <div class="header-inner">
+
+        <div class="app-logo">
+          CHATS
+        </div>
+
+        <div
+          id="connection-status"
+          class="connection-status"
+        >
+          Connecting...
+        </div>
+
+      </div>
+
+    </header>
+
+
+
+    <!-- =======================================================
+         MAIN CONTENT
+    ======================================================== -->
+
+    <main
+      id="main-layout"
+      class="main-layout"
+    >
+
+
+      <!-- =====================================================
+           USERS / HOME PANEL
+      ====================================================== -->
+
+      <aside
+        id="users-panel"
+        class="users-panel"
+      >
+
+        <!-- Users Header -->
+
+        <div class="users-header">
+
+          <div>
+
+            <h2>
+              Messages
+            </h2>
+
+            <small id="my-display-name">
+              Loading...
+            </small>
+
           </div>
-          <div class="search-wrap">
-            <input id="userSearch" type="search" placeholder="Search people…">
+
+
+          <button
+            id="profile-button"
+            type="button"
+            class="header-button"
+            aria-label="Open profile settings"
+          >
+            Profile
+          </button>
+
+        </div>
+
+
+        <!-- Search -->
+
+        <div class="search-container">
+
+          <input
+            id="user-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Search people..."
+          >
+
+        </div>
+
+
+        <!-- Users List -->
+
+        <div
+          id="users-list"
+          class="users-list"
+        >
+
+          <div class="loading-state">
+            Loading people...
           </div>
-          <div id="usersList" class="users-list"></div>
-        </section>
 
-        <section id="conversationPanel" class="panel conversation-panel">
-          <div class="conversation-head">
-            <button id="backBtn" class="back-btn" aria-label="Back">‹</button>
-            <div class="avatar" id="chatAvatar">?</div>
-            <div class="chat-title">
-              <strong id="chatName">Select a person</strong>
-              <span id="chatStatus">Choose someone to chat</span>
-            </div>
+        </div>
+
+      </aside>
+
+
+
+      <!-- =====================================================
+           CHAT PANEL
+      ====================================================== -->
+
+      <section
+        id="chat-panel"
+        class="chat-panel"
+      >
+
+
+        <!-- Chat Header -->
+
+        <div class="chat-header">
+
+          <button
+            id="back-button"
+            type="button"
+            class="icon-button mobile-only"
+            aria-label="Back to users"
+          >
+            ‹
+          </button>
+
+
+          <!-- Selected User Avatar -->
+
+          <div
+            id="chat-avatar"
+            class="avatar chat-avatar"
+          >
+            ?
           </div>
 
-          <div id="messages" class="messages">
-            <div class="empty-state">
-              <div class="empty-icon">💬</div>
-              <h3>Your messages</h3>
-              <p>Select a person and start chatting.</p>
-            </div>
+
+          <!-- Selected User Information -->
+
+          <div class="chat-user-info">
+
+            <strong id="chat-user-name">
+              Select a person
+            </strong>
+
+            <small id="chat-user-status">
+              Choose someone to start chatting
+            </small>
+
           </div>
 
-          <form id="messageForm" class="composer">
-            <input id="messageInput" type="text" maxlength="2000" autocomplete="off" placeholder="Write a message…" disabled>
-            <button id="sendBtn" class="send-btn" type="submit" disabled>➤</button>
-          </form>
-        </section>
 
-        <section id="profilePanel" class="profile-panel hidden">
-          <div class="profile-card">
-            <div class="profile-head">
-              <button id="closeProfileBtn" class="back-btn">‹</button>
-              <h2>Profile & Settings</h2>
+          <!-- Chat Menu -->
+
+          <div class="chat-menu-wrapper">
+
+            <button
+              id="chat-menu-button"
+              type="button"
+              class="icon-button"
+              aria-label="Chat menu"
+              aria-expanded="false"
+            >
+              ⋮
+            </button>
+
+
+            <div
+              id="chat-menu"
+              class="chat-menu hidden"
+            >
+
+              <button
+                id="clear-chat-button"
+                type="button"
+                class="danger-menu-button"
+              >
+                Clear chat
+              </button>
+
             </div>
-            <div class="profile-avatar" id="profileAvatar">U</div>
-            <label>Display name</label>
-            <input id="profileNameInput" type="text" maxlength="40" placeholder="Your name">
-            <button id="saveProfileBtn" class="primary-btn">Save name</button>
 
-            <div class="setting">
-              <div>
-                <strong>Theme</strong>
-                <span>Choose your chat appearance</span>
+          </div>
+
+        </div>
+
+
+
+        <!-- ===================================================
+             MESSAGES
+        ==================================================== -->
+
+        <div
+          id="messages"
+          class="messages"
+        >
+
+          <div class="empty-chat">
+
+            <div class="empty-chat-icon">
+              💬
+            </div>
+
+            <h3>
+              Your messages
+            </h3>
+
+            <p>
+              Select a person to start a private conversation.
+            </p>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- ===================================================
+             UPLOAD STATUS
+        ==================================================== -->
+
+        <div
+          id="upload-status"
+          class="upload-status"
+          aria-live="polite"
+        ></div>
+
+
+
+        <!-- ===================================================
+             MESSAGE COMPOSER
+        ==================================================== -->
+
+        <form
+          id="message-form"
+          class="message-composer"
+        >
+
+
+          <!-- Media Upload -->
+
+          <label
+            for="media-input"
+            class="attachment-button"
+            title="Send photo or video"
+          >
+
+            <span>
+              ＋
+            </span>
+
+            <input
+              id="media-input"
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              hidden
+            >
+
+          </label>
+
+
+          <!-- Message Input -->
+
+          <input
+            id="message-input"
+            type="text"
+            maxlength="2000"
+            autocomplete="off"
+            placeholder="Write a message..."
+            disabled
+          >
+
+
+          <!-- Send Button -->
+
+          <button
+            id="send-button"
+            type="submit"
+            class="send-button"
+            disabled
+            aria-label="Send message"
+          >
+            ➤
+          </button>
+
+        </form>
+
+      </section>
+
+
+
+      <!-- =====================================================
+           PROFILE / SETTINGS
+      ====================================================== -->
+
+      <section
+        id="settings-panel"
+        class="settings-panel hidden"
+      >
+
+        <div class="settings-card">
+
+
+          <!-- Settings Header -->
+
+          <div class="settings-header">
+
+            <button
+              id="close-settings-button"
+              type="button"
+              class="icon-button"
+              aria-label="Close settings"
+            >
+              ‹
+            </button>
+
+            <h2>
+              Profile & Settings
+            </h2>
+
+          </div>
+
+
+
+          <!-- =================================================
+               PROFILE PICTURE
+          ================================================== -->
+
+          <div class="profile-picture-section">
+
+            <div class="profile-picture-wrapper">
+
+              <div
+                id="profile-avatar"
+                class="profile-avatar"
+              >
+                U
               </div>
-              <select id="themeSelect">
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-                <option value="blue">Blue</option>
-                <option value="purple">Purple</option>
-              </select>
+
+
+              <label
+                for="profile-picture-input"
+                class="profile-picture-edit"
+                title="Change profile picture"
+              >
+                +
+                <input
+                  id="profile-picture-input"
+                  type="file"
+                  accept="image/*"
+                  hidden
+                >
+              </label>
+
             </div>
 
-            <div class="setting">
-              <div>
-                <strong>Notifications</strong>
-                <span>Browser notification permission</span>
-              </div>
-              <button id="notifyBtn" class="small-btn">Enable</button>
-            </div>
+            <p>
+              Tap + to change your profile picture
+            </p>
 
-            <button id="profileLogoutBtn" class="danger-btn">Log out</button>
-            <p id="profileMessage" class="message"></p>
           </div>
-        </section>
-      </main>
-    </section>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+          <!-- =================================================
+               DISPLAY NAME
+          ================================================== -->
+
+          <div class="settings-field">
+
+            <label for="profile-name">
+              Display name
+            </label>
+
+            <input
+              id="profile-name"
+              type="text"
+              maxlength="40"
+              placeholder="Your name"
+            >
+
+          </div>
+
+
+          <button
+            id="save-profile-button"
+            type="button"
+            class="primary-button"
+          >
+            Save name
+          </button>
+
+
+          <button
+            id="remove-profile-picture-button"
+            type="button"
+            class="secondary-button"
+          >
+            Remove profile picture
+          </button>
+
+
+
+          <!-- =================================================
+               THEME
+          ================================================== -->
+
+          <div class="setting-row">
+
+            <div class="setting-info">
+
+              <strong>
+                Theme
+              </strong>
+
+              <small>
+                Choose your appearance
+              </small>
+
+            </div>
+
+
+            <select id="theme-select">
+
+              <option value="dark">
+                Dark
+              </option>
+
+              <option value="light">
+                Light
+              </option>
+
+              <option value="blue">
+                Blue
+              </option>
+
+              <option value="purple">
+                Purple
+              </option>
+
+            </select>
+
+          </div>
+
+
+
+          <!-- =================================================
+               NOTIFICATIONS
+          ================================================== -->
+
+          <div class="setting-row">
+
+            <div class="setting-info">
+
+              <strong>
+                Notifications
+              </strong>
+
+              <small>
+                Receive message notifications
+              </small>
+
+            </div>
+
+
+            <label class="switch">
+
+              <input
+                id="notification-toggle"
+                type="checkbox"
+              >
+
+              <span class="slider"></span>
+
+            </label>
+
+          </div>
+
+
+
+          <!-- =================================================
+               ONLINE STATUS
+          ================================================== -->
+
+          <div class="setting-row">
+
+            <div class="setting-info">
+
+              <strong>
+                Online status
+              </strong>
+
+              <small>
+                Show when you are online
+              </small>
+
+            </div>
+
+
+            <label class="switch">
+
+              <input
+                id="online-status-toggle"
+                type="checkbox"
+                checked
+              >
+
+              <span class="slider"></span>
+
+            </label>
+
+          </div>
+
+
+
+          <!-- Settings Message -->
+
+          <div
+            id="settings-message"
+            class="message-area"
+            aria-live="polite"
+          ></div>
+
+
+
+          <!-- =================================================
+               LOGOUT
+          ================================================== -->
+
+          <button
+            id="logout-button"
+            type="button"
+            class="logout-button"
+          >
+            Log out
+          </button>
+
+
+        </div>
+
+      </section>
+
+    </main>
+
+  </section>
+
+
+
+  <!-- =========================================================
+       SUPABASE
+  ========================================================== -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+
+  <!-- Project configuration -->
+
   <script src="js/config.js"></script>
+
+
+  <!-- Main application -->
+
   <script src="js/app.js"></script>
+
 </body>
 </html>
