@@ -2297,68 +2297,56 @@ function getUserStatusText(user) {
     return "Offline";
   }
 
-  /*
-   * A real logout has priority.
-   * If the user logged out after their last activity,
-   * show "Logged out".
-   */
+  const now =
+    Date.now();
 
-  if (
-    user.last_logout_at &&
+  const lastSeen =
     user.last_seen
-  ) {
+      ? new Date(
+          user.last_seen
+        ).getTime()
+      : 0;
 
-    const logoutTime =
-      new Date(
-        user.last_logout_at
-      ).getTime();
+  const lastLogout =
+    user.last_logout_at
+      ? new Date(
+          user.last_logout_at
+        ).getTime()
+      : 0;
 
-    const lastSeenTime =
-      new Date(
-        user.last_seen
-      ).getTime();
-
-    if (
-      logoutTime >= lastSeenTime
-    ) {
-      return "Logged out";
-    }
-  }
+  const secondsSinceLastSeen =
+    lastSeen
+      ? (now - lastSeen) / 1000
+      : Infinity;
 
 
-  /*
-   * Online is valid only when:
-   * - is_online is true
-   * - last_seen is recent
-   */
+  // --------------------------------
+  // 1. Currently online
+  // --------------------------------
 
   if (
     user.is_online === true &&
-    user.last_seen
+    secondsSinceLastSeen <= 70
   ) {
-
-    const lastSeen =
-      new Date(
-        user.last_seen
-      ).getTime();
-
-    const now =
-      Date.now();
-
-    const secondsSinceLastSeen =
-      (now - lastSeen) / 1000;
-
-    if (
-      secondsSinceLastSeen <= 70
-    ) {
-      return "Online";
-    }
+    return "Online";
   }
 
 
-  /*
-   * No recent heartbeat.
-   */
+  // --------------------------------
+  // 2. Actually logged out
+  // --------------------------------
+
+  if (
+    lastLogout > 0 &&
+    lastLogout >= lastSeen
+  ) {
+    return "Logged out";
+  }
+
+
+  // --------------------------------
+  // 3. Offline / heartbeat expired
+  // --------------------------------
 
   return "Offline";
 }
