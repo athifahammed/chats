@@ -3520,7 +3520,10 @@ async function clearCurrentChat() {
 
   const confirmed =
     confirm(
-      `Clear the entire chat with ${state.selectedUser.display_name || "this user"}?\n\nThis removes the messages from the conversation.`
+      `Clear the entire chat with ${
+        state.selectedUser.display_name ||
+        "this user"
+      }?\n\nThis will permanently remove all messages in this conversation.`
     );
 
 
@@ -3536,26 +3539,80 @@ async function clearCurrentChat() {
     );
 
 
+    const myId =
+      state.user.id;
+
+    const otherId =
+      state.selectedUser.id;
+
+
+    /*
+     * Delete messages SENT by me
+     * to the selected user.
+     */
+
     const {
-      error
+      error: sentError
     } = await db
       .from("messages")
       .delete()
-      .or(
-        `and(sender_id.eq.${state.user.id},receiver_id.eq.${state.selectedUser.id}),and(sender_id.eq.${state.selectedUser.id},receiver_id.eq.${state.user.id})`
+      .eq(
+        "sender_id",
+        myId
+      )
+      .eq(
+        "receiver_id",
+        otherId
       );
 
 
-    if (error) {
-      throw error;
+    if (sentError) {
+      throw sentError;
     }
 
 
-    state.messages =
-      [];
+    /*
+     * Delete messages SENT by the
+     * selected user to me.
+     */
+
+    const {
+      error: receivedError
+    } = await db
+      .from("messages")
+      .delete()
+      .eq(
+        "sender_id",
+        otherId
+      )
+      .eq(
+        "receiver_id",
+        myId
+      );
+
+
+    if (receivedError) {
+      throw receivedError;
+    }
+
+
+    /*
+     * Clear local messages immediately.
+     */
+
+    state.messages = [];
 
 
     renderMessages();
+
+
+    /*
+     * Refresh user list so the
+     * last message and unread count
+     * disappear.
+     */
+
+    await loadUsers();
 
 
     showUploadStatus(
@@ -3569,11 +3626,13 @@ async function clearCurrentChat() {
     );
 
 
-    await loadUsers();
-
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "Clear chat error:",
+      error
+    );
+
 
     showUploadStatus(
       error.message ||
