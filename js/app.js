@@ -1448,7 +1448,7 @@ function renderMessages() {
 
     empty.innerHTML = `
       <div class="empty-chat-icon">
-        🔒
+        🤍
       </div>
 
       <h3>
