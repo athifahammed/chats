@@ -1,21 +1,48 @@
-const {createClient}=supabase;const db=createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);let me=null,current=null,profiles=[],channel=null,isSignup=false;
-const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function theme(v){document.body.className=v==='dark'?'':v;localStorage.setItem('theme',v)}
-function avatarHTML(p,big=false){let letter=esc((p.display_name||'U')[0].toUpperCase());return `<div class="avatar ${big?'big':''}">${p.avatar_url?`<img src="${esc(p.avatar_url)}">`:letter}<i class="online" style="display:${p.is_online?'block':'none'}"></i></div>`}
-async function profile(){let {data,error}=await db.from('profiles').select('*').eq('id',me.id).single();if(error){await db.from('profiles').insert({id:me.id,display_name:me.user_metadata?.display_name||me.email.split('@')[0],is_online:true});({data}=await db.from('profiles').select('*').eq('id',me.id).single())}return data}
-async function loadUsers(){let {data}=await db.from('profiles').select('*').neq('id',me.id).order('display_name');profiles=data||[];renderUsers()}
-function renderUsers(){let q=$('search').value.toLowerCase();let list=profiles.filter(p=>(p.display_name||'').toLowerCase().includes(q));$('users').innerHTML=list.length?list.map(p=>`<div class="user" data-id="${p.id}">${avatarHTML(p)}<div class="user-info"><b>${esc(p.display_name)}</b><small>${p.is_online?'Active now':p.last_seen?'Last active '+new Date(p.last_seen).toLocaleString([], {dateStyle:'short',timeStyle:'short'}):'Offline'}</small></div></div>`).join(''):'<div class="empty">No users found.</div>';document.querySelectorAll('.user').forEach(x=>x.onclick=()=>openChat(x.dataset.id))}
-async function openChat(id){current=profiles.find(p=>p.id===id);if(!current)return;$('chatName').textContent=current.display_name;$('chatStatus').textContent=current.is_online?'Active now':current.last_seen?'Last active '+new Date(current.last_seen).toLocaleString([], {dateStyle:'short',timeStyle:'short'}):'Offline';show('chatPage');await loadMessages();await markSeen();}
-function show(page){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$(page).classList.add('active');$('usersTab').classList.toggle('selected',page==='usersPage');$('profileTab').classList.toggle('selected',page==='profilePage')}
-function dayLabel(d){let x=new Date(d),n=new Date();if(x.toDateString()===n.toDateString())return'Today';let y=new Date(n);y.setDate(y.getDate()-1);return x.toDateString()===y.toDateString()?'Yesterday':x.toLocaleDateString()}
-async function loadMessages(){let {data}=await db.from('messages').select('*').or(`and(sender_id.eq.${me.id},receiver_id.eq.${current.id}),and(sender_id.eq.${current.id},receiver_id.eq.${me.id})`).order('created_at');let html='',last='';for(const m of data||[]){let day=dayLabel(m.created_at);if(day!==last){html+=`<div class="day">${day}</div>`;last=day}let mine=m.sender_id===me.id;html+=`<div class="bubble-wrap ${mine?'mine':''}"><div class="bubble">${esc(m.content)}<div class="meta">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div></div></div>${mine&&m.read_at?'<div class="seen">Seen</div>':''}`}$('messages').innerHTML=html||'<div class="empty">No messages yet.</div>';$('messages').scrollTop=$('messages').scrollHeight}
-async function markSeen(){await db.from('messages').update({read_at:new Date().toISOString()}).eq('receiver_id',me.id).eq('sender_id',current.id).is('read_at',null);}
-async function send(e){e.preventDefault();let c=$('messageInput').value.trim();if(!c||!current)return;await db.from('messages').insert({sender_id:me.id,receiver_id:current.id,content:c,message_type:'text'});$('messageInput').value='';await loadMessages()}
-async function setOnline(v){await db.from('profiles').update({is_online:v,last_seen:v?null:new Date().toISOString()}).eq('id',me.id)}
-async function saveProfile(){let name=$('nameInput').value.trim();let pass=$('passwordInput').value.trim();let patch={display_name:name||me.email.split('@')[0]};await db.from('profiles').update(patch).eq('id',me.id);if(pass)await db.auth.updateUser({password:pass});$('profileTitle').textContent=patch.display_name;await loadUsers();alert('Profile saved')}
-async function boot(){theme(localStorage.getItem('theme')||'dark');let {data}=await db.auth.getSession();if(!data.session)return showAuth();me=data.session.user;let p=await profile();$('nameInput').value=p.display_name;$('profileTitle').textContent=p.display_name;$('avatar').innerHTML=p.avatar_url?`<img src="${esc(p.avatar_url)}">`:esc((p.display_name||'U')[0].toUpperCase());await setOnline(true);await loadUsers();subscribe();show('usersPage')}
-function showAuth(){$('auth').classList.remove('hidden');$('app').classList.add('hidden')}
-function subscribe(){channel=db.channel('chats').on('postgres_changes',{event:'*',schema:'public',table:'messages'},async payload=>{let m=payload.new;if(m?.sender_id===me.id||m?.receiver_id===me.id){if(current&&(m.sender_id===current.id||m.receiver_id===current.id)){await loadMessages();if(m.receiver_id===me.id)await markSeen()}if(m?.receiver_id===me.id&&Notification.permission==='granted'&&document.hidden)new Notification('CHATS',{body:m.content})}}).subscribe()}
-$('authForm').onsubmit=async e=>{e.preventDefault();$('error').textContent='';let email=$('email').value.trim(),password=$('password').value;if(isSignup){let {data,error}=await db.auth.signUp({email,password,options:{data:{display_name:$('displayName').value.trim()||'User'}}});if(error)$('error').textContent=error.message;else if(!data.session)$('error').textContent='Check your email to confirm your account.'}else{let {error}=await db.auth.signInWithPassword({email,password});if(error)$('error').textContent=error.message;else location.reload()}};
-$('modeBtn').onclick=()=>{isSignup=!isSignup;$('displayName').style.display=isSignup?'block':'none';$('authSubmit').textContent=isSignup?'Sign up':'Log in';$('modeBtn').textContent=isSignup?'Back to login':'Create an account'};
-$('search').oninput=renderUsers;$('sendForm').onsubmit=send;$('backBtn').onclick=()=>show('usersPage');$('usersTab').onclick=()=>show('usersPage');$('profileTab').onclick=()=>show('profilePage');$('theme').onchange=e=>theme(e.target.value);$('saveProfile').onclick=saveProfile;$('removeAvatar').onclick=async()=>{await db.from('profiles').update({avatar_url:null}).eq('id',me.id);$('avatar').innerHTML=esc(($('nameInput').value||'U')[0].toUpperCase())};$('notifyBtn').onclick=async()=>{if('Notification'in window){let p=await Notification.requestPermission();alert(p==='granted'?'Notifications enabled':'Notifications disabled')}};$('toggleNotify').onclick=async()=>{$('notifyBtn').click()};$('logout').onclick=async()=>{await setOnline(false);await db.auth.signOut();location.reload()};window.addEventListener('beforeunload',()=>{if(me)setOnline(false)});document.addEventListener('visibilitychange',()=>{if(me&&!document.hidden)setOnline(true);else if(me)setOnline(false)});boot();
+const sb=supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);
+let me=null,current=null,channel=null,profiles=[];
+
+const $=id=>document.getElementById(id);
+function toast(t){$("toast").textContent=t;$("toast").style.display="block";setTimeout(()=>$("toast").style.display="none",2200)}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function initials(n){return (n||"U").trim().split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase()}
+function fmtLast(x){if(!x)return"Offline";let d=new Date(x);let diff=Date.now()-d.getTime();if(diff<60000)return"Active now";if(diff<3600000)return`${Math.floor(diff/60000)}m ago`;if(diff<86400000)return`${Math.floor(diff/3600000)}h ago`;return d.toLocaleDateString()}
+function dayLabel(x){let d=new Date(x),t=new Date();let y=new Date();y.setDate(t.getDate()-1);if(d.toDateString()===t.toDateString())return"Today";if(d.toDateString()===y.toDateString())return"Yesterday";return d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}
+function applyTheme(t){document.documentElement.className=t||"dark";localStorage.setItem("chats-theme",t||"dark")}
+function renderUsers(list=profiles){$("users").innerHTML=list.map(p=>`<div class="user" data-id="${p.id}"><div class="avatar">${esc(initials(p.display_name))}${p.is_online?'<span class="dot"></span>':''}</div><div class="user-main"><div class="user-name">${esc(p.display_name)}</div><div class="user-status">${p.is_online?"Active now":fmtLast(p.last_seen)}</div></div></div>`).join("");$("emptyUsers").classList.toggle("hidden",!list.length);document.querySelectorAll(".user").forEach(x=>x.onclick=()=>openChat(x.dataset.id))}
+async function ensureSession(){
+  let {data:{session}}=await sb.auth.getSession();
+  if(!session){let r=await sb.auth.signInAnonymously();if(r.error)throw r.error;session=r.data.session}
+  me=session.user;
+  let {data:p,error}=await sb.from("profiles").select("*").eq("id",me.id).maybeSingle();
+  if(error)throw error;
+  if(!p){let r=await sb.from("profiles").insert({id:me.id,display_name:"New User",is_online:true,last_seen:new Date().toISOString()}).select().single();if(r.error)throw r.error;p=r.data}
+  else await sb.from("profiles").update({is_online:true,last_seen:new Date().toISOString()}).eq("id",me.id);
+  $("nameInput").value=p.display_name||"";
+}
+async function loadUsers(){let r=await sb.from("profiles").select("*").neq("id",me.id).order("display_name");if(r.error){toast(r.error.message);return}profiles=r.data||[];renderUsers()}
+async function openChat(id){
+ current=profiles.find(p=>p.id===id);if(!current)return;
+ $("home").classList.add("hidden");$("chat").classList.remove("hidden");$("chatName").textContent=current.display_name;$("chatStatus").textContent=current.is_online?"Active now":fmtLast(current.last_seen);
+ await loadMessages(); subscribeChat();
+}
+function closeChat(){if(channel)sb.removeChannel(channel);channel=null;current=null;$("chat").classList.add("hidden");$("home").classList.remove("hidden")}
+async function loadMessages(){
+ let r=await sb.from("messages").select("*").or(`and(sender_id.eq.${me.id},receiver_id.eq.${current.id}),and(sender_id.eq.${current.id},receiver_id.eq.${me.id})`).order("created_at",{ascending:true});
+ if(r.error){toast(r.error.message);return}
+ $("messages").innerHTML="";let last="";
+ for(const m of r.data||[]){let d=dayLabel(m.created_at);if(d!==last){$("messages").insertAdjacentHTML("beforeend",`<div class="day">${d}</div>`);last=d}let mine=m.sender_id===me.id;$("messages").insertAdjacentHTML("beforeend",`<div class="msg ${mine?"mine":""}">${esc(m.content)}<div class="meta">${new Date(m.created_at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}</div>${mine&&m.read_at?'<div class="seen">Seen</div>':""}</div>`)}
+ $("messages").scrollTop=$("messages").scrollHeight;
+ await sb.from("messages").update({read_at:new Date().toISOString()}).eq("sender_id",current.id).eq("receiver_id",me.id).is("read_at",null);
+}
+function subscribeChat(){channel=sb.channel("chat-"+current.id).on("postgres_changes",{event:"*",schema:"public",table:"messages"},payload=>{let m=payload.new;if(m&&(m.sender_id===me.id&&m.receiver_id===current.id||m.sender_id===current.id&&m.receiver_id===me.id))loadMessages()}).subscribe()}
+$("sendForm").onsubmit=async e=>{e.preventDefault();let c=$("messageInput").value.trim();if(!c||!current)return;let r=await sb.from("messages").insert({sender_id:me.id,receiver_id:current.id,content:c});if(r.error)toast(r.error.message);else $("messageInput").value=""}
+$("backBtn").onclick=closeChat;
+$("settingsBtn").onclick=()=>{$("settings").classList.remove("hidden")}
+$("closeSettings").onclick=()=>{$("settings").classList.add("hidden")}
+$("saveName").onclick=async()=>{let n=$("nameInput").value.trim();if(!n)return;let r=await sb.from("profiles").update({display_name:n}).eq("id",me.id);if(r.error)toast(r.error.message);else{toast("Name saved");$("settings").classList.add("hidden");loadUsers()}}
+document.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>applyTheme(b.dataset.theme));
+$("notifyBtn").onclick=async()=>{if(!("Notification"in window)){toast("Notifications not supported");return}let p=await Notification.requestPermission();toast(p==="granted"?"Notifications enabled":"Notifications disabled")}
+$("search").oninput=e=>{let q=e.target.value.toLowerCase();renderUsers(profiles.filter(p=>(p.display_name||"").toLowerCase().includes(q)))}
+window.addEventListener("beforeunload",()=>{if(me)sb.from("profiles").update({is_online:false,last_seen:new Date().toISOString()}).eq("id",me.id)});
+sb.auth.onAuthStateChange(()=>{});
+(async()=>{try{applyTheme(localStorage.getItem("chats-theme")||"dark");await ensureSession();await loadUsers();sb.channel("presence").on("postgres_changes",{event:"UPDATE",schema:"public",table:"profiles"},()=>loadUsers()).subscribe();setInterval(()=>me&&sb.from("profiles").update({is_online:true,last_seen:new Date().toISOString()}).eq("id",me.id),30000)}catch(e){console.error(e);toast("Setup error: "+e.message)}})();

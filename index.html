@@ -1,20 +1,64 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>CHATS</title><link rel="stylesheet" href="css/style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>CHATS</title>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="app" class="app hidden">
-  <header class="topbar"><div><h1>CHATS</h1><span id="statusText">Messages</span></div><button id="notifyBtn" class="icon" title="Notifications">🔔</button></header>
-  <main>
-    <section id="usersPage" class="page active"><div class="search"><input id="search" placeholder="Search people..."></div><div id="users" class="users"></div></section>
-    <section id="chatPage" class="page chat-page"><div class="chat-head"><button id="backBtn" class="icon">←</button><div><b id="chatName">Chat</b><small id="chatStatus"></small></div></div><div id="messages" class="messages"></div><form id="sendForm" class="composer"><input id="messageInput" maxlength="2000" autocomplete="off" placeholder="Write a message..."><button>Send</button></form></section>
-    <section id="profilePage" class="page"><div class="profile-card"><div id="avatar" class="avatar big">U</div><h2 id="profileTitle">Profile</h2><label>Display name<input id="nameInput"></label><label>New password<input id="passwordInput" type="password" placeholder="Leave blank to keep current"></label><div class="row"><button id="saveProfile">Save</button><button id="removeAvatar" class="secondary">Remove photo</button></div><label>Theme<select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="blue">Blue</option><option value="purple">Purple</option><option value="green">Green</option></select></label><button id="toggleNotify" class="wide secondary">Enable notifications</button><button id="logout" class="wide danger">Log out</button></div></section>
+<div id="app">
+  <header class="top">
+    <div class="brand">CHATS</div>
+    <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙</button>
+  </header>
+
+  <main id="home" class="screen">
+    <div class="search-wrap"><input id="search" placeholder="Search people"></div>
+    <div id="users" class="users"></div>
+    <div id="emptyUsers" class="empty hidden">No users yet</div>
   </main>
-  <nav class="bottom"><button id="usersTab" class="selected">👥<span>Users</span></button><button id="profileTab">👤<span>Profile</span></button></nav>
+
+  <main id="chat" class="screen chat-screen hidden">
+    <div class="chat-head">
+      <button id="backBtn" class="icon-btn">‹</button>
+      <div>
+        <div id="chatName" class="chat-name">Chat</div>
+        <div id="chatStatus" class="chat-status"></div>
+      </div>
+    </div>
+    <div id="messages" class="messages"></div>
+    <form id="sendForm" class="composer">
+      <input id="messageInput" autocomplete="off" maxlength="2000" placeholder="Message">
+      <button class="send" type="submit">➤</button>
+    </form>
+  </main>
+
+  <section id="settings" class="sheet hidden">
+    <div class="sheet-inner">
+      <div class="sheet-head"><b>Profile</b><button id="closeSettings" class="icon-btn">×</button></div>
+      <label>Your name</label>
+      <input id="nameInput" maxlength="40" placeholder="Your name">
+      <button id="saveName" class="primary">Save name</button>
+
+      <label>Theme</label>
+      <div class="themes">
+        <button data-theme="dark">Dark</button>
+        <button data-theme="light">Light</button>
+        <button data-theme="blue">Blue</button>
+        <button data-theme="purple">Purple</button>
+        <button data-theme="green">Green</button>
+      </div>
+
+      <button id="notifyBtn" class="secondary">Enable notifications</button>
+      <p id="statusText" class="small"></p>
+    </div>
+  </section>
 </div>
-<div id="auth" class="auth"><div class="auth-card"><h1>CHATS</h1><p>Simple private messaging.</p><form id="authForm"><input id="email" type="email" placeholder="Email" required><input id="password" type="password" placeholder="Password" required><input id="displayName" placeholder="Name (for signup)"><button id="authSubmit">Log in</button></form><button id="modeBtn" class="link">Create an account</button><p id="error" class="error"></p></div></div>
-<script src="js/config.js"></script><script src="js/app.js"></script>
-</body></html>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
